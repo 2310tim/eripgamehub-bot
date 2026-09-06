@@ -32,13 +32,14 @@ def games_menu():
         [InlineKeyboardButton("Zagruzka.by", callback_data="zagruzka")],
         [InlineKeyboardButton("Game-Online.by", callback_data="gameonline")],
         [InlineKeyboardButton("Belconsole.by", callback_data="belconsole")],
+        [InlineKeyboardButton("GGSel", callback_data="ggsel")],
         [InlineKeyboardButton("Назад", callback_data="back")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 def telegram_menu():
     keyboard = [
-        [InlineKeyboardButton("LaLYoUStarsbot", callback_data="lalyou")],
+        [InlineKeyboardButton("LaLYoU Stars Bot", callback_data="lalyou")],
         [InlineKeyboardButton("Назад", callback_data="back")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -83,7 +84,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "🎮 Zagruzka.by\n\n"
             "Сайт: https://zagruzka.by\n"
-            "Описание: Платформа для покупки игр и пополнения игровых аккаунтов.",
+            "Описание: Цифровой маркетплейс лицензионных игр.",
             reply_markup=games_menu()
         )
 
@@ -91,7 +92,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "🎮 Game-Online.by\n\n"
             "Сайт: https://game-online.by\n"
-            "Описание: Магазин цифровых ключей игр, подарочных карт и внутриигровой валюты.",
+            "Описание: Интернет-магазин лицензионных ключей для PC и консолей.",
             reply_markup=games_menu()
         )
 
@@ -99,15 +100,23 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "🎮 Belconsole.by\n\n"
             "Сайт: https://belconsole.by\n"
-            "Описание: Продажа игровых консолей, аксессуаров и дисков с играми.",
+            "Описание: Площадка, где продаются цифровые коды активации, ключи для Steam и подписки для консолей.",
+            reply_markup=games_menu()
+        )
+
+    elif data == "ggsel":
+        await query.edit_message_text(
+            "🎮 GGSel\n\n"
+            "Сайт: https://ggsel.net\n"
+            "Описание: Торговая площадка, где независимые продавцы предлагают ключи к играм, игровую валюту, аккаунты, подписки и программное обеспечение для различных платформ.",
             reply_markup=games_menu()
         )
 
     elif data == "lalyou":
         await query.edit_message_text(
-            "🤖 LaLYoUStarsbot\n\n"
+            "🤖 LaLYoU Stars Bot\n\n"
             "Бот в Telegram: @LaLYoUStarsbot\n"
-            "Описание: Уникальный бот с широким функционалом, который ты можешь попробовать прямо сейчас!",
+            "Описание: Бот для покупки звёзд, премиума, удалённых подарков, аренды NFT.",
             reply_markup=telegram_menu()
         )
 
