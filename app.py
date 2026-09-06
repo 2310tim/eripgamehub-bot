@@ -22,14 +22,23 @@ def health():
 def main_menu():
     keyboard = [
         [InlineKeyboardButton("Игровые", callback_data="games")],
+        [InlineKeyboardButton("Telegram", callback_data="telegram")],
         [InlineKeyboardButton("Другие", callback_data="other")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 def games_menu():
     keyboard = [
-        [InlineKeyboardButton("Donatov.Net", callback_data="donatov")],
-        [InlineKeyboardButton("GGSel", callback_data="ggsel")],
+        [InlineKeyboardButton("Zagruzka.by", callback_data="zagruzka")],
+        [InlineKeyboardButton("Game-Online.by", callback_data="gameonline")],
+        [InlineKeyboardButton("Belconsole.by", callback_data="belconsole")],
+        [InlineKeyboardButton("Назад", callback_data="back")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def telegram_menu():
+    keyboard = [
+        [InlineKeyboardButton("LaLYoUStarsbot", callback_data="lalyou")],
         [InlineKeyboardButton("Назад", callback_data="back")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -58,22 +67,48 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=games_menu()
         )
 
+    elif data == "telegram":
+        await query.edit_message_text(
+            "Вы выбрали категорию \"Telegram\".\n\nВыберите сервис:",
+            reply_markup=telegram_menu()
+        )
+
     elif data == "other":
         await query.edit_message_text(
             "Вы выбрали категорию \"Другие\".\n\nСписок сервисов скоро появится.",
             reply_markup=other_menu()
         )
 
-    elif data == "donatov":
+    elif data == "zagruzka":
         await query.edit_message_text(
-            "Donatov.Net\nСайт: https://donatov.net",
+            "🎮 Zagruzka.by\n\n"
+            "Сайт: https://zagruzka.by\n"
+            "Описание: Платформа для покупки игр и пополнения игровых аккаунтов.",
             reply_markup=games_menu()
         )
 
-    elif data == "ggsel":
+    elif data == "gameonline":
         await query.edit_message_text(
-            "GGSel\nСайт: https://ggsel.net",
+            "🎮 Game-Online.by\n\n"
+            "Сайт: https://game-online.by\n"
+            "Описание: Магазин цифровых ключей игр, подарочных карт и внутриигровой валюты.",
             reply_markup=games_menu()
+        )
+
+    elif data == "belconsole":
+        await query.edit_message_text(
+            "🎮 Belconsole.by\n\n"
+            "Сайт: https://belconsole.by\n"
+            "Описание: Продажа игровых консолей, аксессуаров и дисков с играми.",
+            reply_markup=games_menu()
+        )
+
+    elif data == "lalyou":
+        await query.edit_message_text(
+            "🤖 LaLYoUStarsbot\n\n"
+            "Бот в Telegram: @LaLYoUStarsbot\n"
+            "Описание: Уникальный бот с широким функционалом, который ты можешь попробовать прямо сейчас!",
+            reply_markup=telegram_menu()
         )
 
     elif data == "back":
