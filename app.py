@@ -1,73 +1,109 @@
 # app.py
 # Telegram anonymous complaints bot (aiogram v3) + Flask (Render friendly)
-import os
-import asyncio
-import threading
 from flask import Flask
-from aiogram import Bot, Dispatcher
-from aiogram.filters import CommandStart
-from aiogram.types import Message
+import os
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# ---------- Конфигурация (из переменных окружения) ----------
-TOKEN = os.environ.get("TELEGRAM_TOKEN")
+# ---- ТОКЕН ИЗ ПЕРЕМЕННОЙ ОКРУЖЕНИЯ ----
+TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TOKEN:
-    raise RuntimeError("TELEGRAM_TOKEN не задан. Установите в Render Environment.")
+    raise ValueError("Токен не найден. Пожалуйста, добавьте TELEGRAM_TOKEN в переменные окружения.")
 
-ADMIN_CHAT = os.environ.get("ADMIN_CHAT_ID")
-if not ADMIN_CHAT:
-    raise RuntimeError("ADMIN_CHAT_ID не задан. Установите в Render Environment.")
-ADMIN_CHAT_ID = int(ADMIN_CHAT)  # пример: -1001234567890 для канала/чата
+# ---- FLASK ДЛЯ RENDER ----
+app = Flask(__name__)
 
-# ---------- Инициализация aiogram ----------
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
+@app.route('/')
+def home():
+    return "Бот работает."
 
-# ---------- Хендлеры (перенеси сюда свою логику) ----------
-@dp.message(CommandStart())
-async def start(message: Message):
-    await message.answer(
-        "Максимально подробно опишите проблему. Чем больше информации - тем быстрее "
-        "отработают соответствующие органы! Отправьте жалобу, и я полностью передам её "
-        "анонимно администраторам. Можно оставить контакты для связи."
+@app.route('/health')
+def health():
+    return "OK", 200
+
+# ---- КНОПКИ ГЛАВНОГО МЕНЮ ----
+def main_menu_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("Игровые", callback_data="category_games")],
+        [InlineKeyboardButton("Другие", callback_data="category_other")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+# ---- КНОПКИ ДЛЯ КАТЕГОРИИ "ИГРОВЫЕ" ----
+def games_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("Donatov.Net", callback_data="service_donatov")],
+        [InlineKeyboardButton("GGSel", callback_data="service_ggsel")],
+        [InlineKeyboardButton("Назад", callback_data="back_to_main")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+# ---- КНОПКИ ДЛЯ КАТЕГОРИИ "ДРУГИЕ" (ПОКА ЗАГЛУШКА) ----
+def other_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("Назад", callback_data="back_to_main")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+# ---- КОМАНДА /START ----
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "Здравствуйте!\n\n"
+        "Выберите категорию сервисов, которые вам нужны:"
     )
+    await update.message.reply_text(text, reply_markup=main_menu_keyboard())
 
-@dp.message()
-async def complaint(message: Message):
-    text = message.text or "<нет текста>"
-    # пересылаем админам: только текст, без раскрытия пользователя
-    try:
-        await bot.send_message(ADMIN_CHAT_ID, f"⚠️ Юху! Кто-то настучал!:\n\n{text}")
-        await message.answer("✅ Информация отправлена! Имейте в виду - у всех ребят сейчас огромное колличество работы, не все вопросы можно решить сразу и по щелчку пальцев. Но все виновные будут наказаны. Вор будет сидеть в тюрьме. Быть добру!")
-    except Exception as e:
-        # логирование (в Render видно в логах)
-        print("Ошибка при отправке в админ-чат:", e)
-        await message.answer("❗️ Не удалось отправить жалобу — попробуйте позже.")
+# ---- ОБРАБОТЧИК КНОПОК ----
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-# ---------- Функция запуска polling (async) ----------
-async def run_bot():
-    # Запускаем polling (он блокирует текущий asyncio loop)
-    await dp.start_polling(bot)
+    data = query.data
 
-# ---------- Небольшой HTTP-сервер для Render (чтобы был открыт порт) ----------
-def run_http():
-    app = Flask(__name__)
+    # ---- КАТЕГОРИЯ "ИГРОВЫЕ" ----
+    if data == "category_games":
+        text = "Вы выбрали категорию \"Игровые\".\n\nВыберите сервис:"
+        await query.edit_message_text(text, reply_markup=games_keyboard())
 
-    @app.route("/")
-    def root():
-        return "Bot is running", 200
+    # ---- КАТЕГОРИЯ "ДРУГИЕ" ----
+    elif data == "category_other":
+        text = "Вы выбрали категорию \"Другие\".\n\nСписок сервисов скоро появится."
+        await query.edit_message_text(text, reply_markup=other_keyboard())
 
-    @app.route("/health")
-    def health():
-        return "OK", 200
+    # ---- СЕРВИС: DONATOV.NET ----
+    elif data == "service_donatov":
+        text = (
+            "Donatov.Net\n\n"
+            "Сайт: https://donatov.net\n"
+            "Данный раздел находится в разработке."
+        )
+        await query.edit_message_text(text, reply_markup=games_keyboard())
 
-    port = int(os.environ.get("PORT", "5000"))
-    # Render требует 0.0.0.0 и порт из $PORT
-    app.run(host="0.0.0.0", port=port)
+    # ---- СЕРВИС: GGSEL ----
+    elif data == "service_ggsel":
+        text = (
+            "GGSel\n\n"
+            "Сайт: https://ggsel.net\n"
+            "Данный раздел находится в разработке."
+        )
+        await query.edit_message_text(text, reply_markup=games_keyboard())
 
-# ---------- Точка входа ----------
+    # ---- НАЗАД В ГЛАВНОЕ МЕНЮ ----
+    elif data == "back_to_main":
+        text = "Здравствуйте!\n\nВыберите категорию сервисов, которые вам нужны:"
+        await query.edit_message_text(text, reply_markup=main_menu_keyboard())
+
+# ---- ЗАПУСК БОТА ----
+def main():
+    application = Application.builder().token(TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_handler))
+
+    print("Бот успешно запущен.")
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
 if __name__ == "__main__":
-    # Запускаем Flask в отдельном потоке — чтобы binding порта происходил в процессе
-    threading.Thread(target=run_http, daemon=True).start()
-
-    # Запускаем aiogram polling в основном потоке (asyncio)
-    asyncio.run(run_bot())
+    import threading
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))), daemon=True).start()
+    main()
