@@ -122,17 +122,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ---- НАЗАД В СПИСОК СЕРВИСОВ (исправлено!) ----
     elif data == "back_to_games":
-        await query.edit_message_text(
+        # Удаляем сообщение с картинкой
+        await query.delete_message()
+        # Отправляем новое сообщение с меню сервисов
+        await query.message.reply_text(
             "🎮 Вы выбрали категорию 'Игровые'.\n\nВыберите сервис:",
             reply_markup=games_menu()
         )
     elif data == "back_to_telegram":
-        await query.edit_message_text(
+        await query.delete_message()
+        await query.message.reply_text(
             "📱 Вы выбрали категорию 'Telegram'.\n\nВыберите сервис:",
             reply_markup=telegram_menu()
         )
     elif data == "back_to_other":
-        await query.edit_message_text(
+        await query.delete_message()
+        await query.message.reply_text(
             "📦 Вы выбрали категорию 'Другие'.\n\nСписок сервисов скоро появится.",
             reply_markup=other_menu()
         )
