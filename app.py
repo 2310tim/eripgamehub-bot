@@ -22,7 +22,7 @@ def home():
 def health():
     return "OK", 200
 
-# ----- ГЛАВНОЕ МЕНЮ -----
+# ----- КЛАВИАТУРЫ -----
 def main_menu():
     keyboard = [
         [InlineKeyboardButton("📂 Категории сервисов", callback_data="categories")],
@@ -30,7 +30,6 @@ def main_menu():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-# ----- КЛАВИАТУРЫ КАТЕГОРИЙ -----
 def categories_menu():
     keyboard = [
         [InlineKeyboardButton("Игровые", callback_data="games")],
@@ -83,8 +82,7 @@ def back_to_other_menu():
 # ----- ОБРАБОТЧИКИ -----
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Здравствуйте!\n\n"
-        "Выберите действие:",
+        "👋 Здравствуйте!\n\nВыберите действие:",
         reply_markup=main_menu()
     )
 
@@ -99,12 +97,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📂 Выберите категорию сервисов:",
             reply_markup=categories_menu()
         )
-
     elif data == "contact":
         await query.edit_message_text(
-            "📩 Вы выбрали 'Связь'.\n\n"
-            "Пожалуйста, напишите ваше сообщение. "
-            "Я перешлю его администратору.",
+            "📩 Вы выбрали 'Связь'.\n\nПожалуйста, напишите ваше сообщение. Я перешлю его администратору.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔙 Назад", callback_data="back_main")]
             ])
@@ -125,19 +120,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=categories_menu()
         )
 
-    # ---- НАЗАД В СПИСОК СЕРВИСОВ КАТЕГОРИИ ----
+    # ---- НАЗАД В СПИСОК СЕРВИСОВ (исправлено!) ----
     elif data == "back_to_games":
         await query.edit_message_text(
             "🎮 Вы выбрали категорию 'Игровые'.\n\nВыберите сервис:",
             reply_markup=games_menu()
         )
-
     elif data == "back_to_telegram":
         await query.edit_message_text(
             "📱 Вы выбрали категорию 'Telegram'.\n\nВыберите сервис:",
             reply_markup=telegram_menu()
         )
-
     elif data == "back_to_other":
         await query.edit_message_text(
             "📦 Вы выбрали категорию 'Другие'.\n\nСписок сервисов скоро появится.",
@@ -150,26 +143,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎮 Вы выбрали категорию 'Игровые'.\n\nВыберите сервис:",
             reply_markup=games_menu()
         )
-
     elif data == "telegram":
         await query.edit_message_text(
             "📱 Вы выбрали категорию 'Telegram'.\n\nВыберите сервис:",
             reply_markup=telegram_menu()
         )
-
     elif data == "other":
         await query.edit_message_text(
             "📦 Вы выбрали категорию 'Другие'.\n\nСписок сервисов скоро появится.",
             reply_markup=other_menu()
         )
 
-    # ----- СЕРВИСЫ -----
+    # ----- СЕРВИСЫ (с картинками) -----
     elif data == "belconsole":
         await query.message.reply_photo(
             photo="https://t.me/ERIPGameHub/7",
-            caption="🎮 Belconsole.by\n\n"
-                    "Сайт: https://belconsole.by\n"
-                    "Описание: Площадка, где продаются цифровые коды активации, ключи для Steam и подписки для консолей.",
+            caption="🎮 Belconsole.by\n\nСайт: https://belconsole.by\nОписание: Площадка, где продаются цифровые коды активации, ключи для Steam и подписки для консолей.",
             reply_markup=back_to_games_menu()
         )
         await query.delete_message()
@@ -177,9 +166,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "donatov":
         await query.message.reply_photo(
             photo="https://t.me/ERIPGameHub/5",
-            caption="🎮 Donatov.Net\n\n"
-                    "Сайт: https://donatov.net\n"
-                    "Описание: Платформа для донатов, пополнения игровых аккаунтов и покупки внутриигровой валюты.",
+            caption="🎮 Donatov.Net\n\nСайт: https://donatov.net\nОписание: Платформа для донатов, пополнения игровых аккаунтов и покупки внутриигровой валюты.",
             reply_markup=back_to_games_menu()
         )
         await query.delete_message()
@@ -187,9 +174,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "gameonline":
         await query.message.reply_photo(
             photo="https://t.me/ERIPGameHub/4",
-            caption="🎮 Game-Online.by\n\n"
-                    "Сайт: https://game-online.by\n"
-                    "Описание: Интернет-магазин лицензионных ключей для PC и консолей.",
+            caption="🎮 Game-Online.by\n\nСайт: https://game-online.by\nОписание: Интернет-магазин лицензионных ключей для PC и консолей.",
             reply_markup=back_to_games_menu()
         )
         await query.delete_message()
@@ -197,9 +182,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "ggsel":
         await query.message.reply_photo(
             photo="https://t.me/ERIPGameHub/8",
-            caption="🎮 GGSel\n\n"
-                    "Сайт: https://ggsel.net\n"
-                    "Описание: Торговая площадка, где независимые продавцы предлагают ключи к играм, игровую валюту, аккаунты, подписки и программное обеспечение для различных платформ.",
+            caption="🎮 GGSel\n\nСайт: https://ggsel.net\nОписание: Торговая площадка, где независимые продавцы предлагают ключи к играм, игровую валюту, аккаунты, подписки и программное обеспечение для различных платформ.",
             reply_markup=back_to_games_menu()
         )
         await query.delete_message()
@@ -207,9 +190,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "zagruzka":
         await query.message.reply_photo(
             photo="https://t.me/ERIPGameHub/6",
-            caption="🎮 Zagruzka.by\n\n"
-                    "Сайт: https://zagruzka.by\n"
-                    "Описание: Цифровой маркетплейс лицензионных игр.",
+            caption="🎮 Zagruzka.by\n\nСайт: https://zagruzka.by\nОписание: Цифровой маркетплейс лицензионных игр.",
             reply_markup=back_to_games_menu()
         )
         await query.delete_message()
@@ -217,9 +198,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "lalyou":
         await query.message.reply_photo(
             photo="https://t.me/ERIPGameHub/2",
-            caption="🤖 LaLYoU Stars Bot\n\n"
-                    "Бот в Telegram: @LaLYoUStarsbot\n"
-                    "Описание: Бот для покупки звёзд, премиума, удалённых подарков, аренды NFT.",
+            caption="🤖 LaLYoU Stars Bot\n\nБот в Telegram: @LaLYoUStarsbot\nОписание: Бот для покупки звёзд, премиума, удалённых подарков, аренды NFT.",
             reply_markup=back_to_telegram_menu()
         )
         await query.delete_message()
@@ -239,13 +218,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         await update.message.reply_text(
-            "✅ Ваше сообщение отправлено администратору!\n\n"
-            "Ожидайте ответа. Спасибо!",
+            "✅ Ваше сообщение отправлено администратору!\n\nОжидайте ответа. Спасибо!",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔙 В главное меню", callback_data="back_main")]
             ])
         )
-        
         context.user_data['awaiting_message'] = False
     else:
         await update.message.reply_text(
@@ -256,11 +233,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ----- ЗАПУСК -----
 def run_bot():
     application = Application.builder().token(TOKEN).build()
-    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
