@@ -111,19 +111,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data['awaiting_message'] = True
 
-    # ---- НАЗАД ----
+    # ---- НАЗАД В ГЛАВНОЕ МЕНЮ ----
     elif data == "back_main":
         await query.edit_message_text(
             "👋 Здравствуйте!\n\nВыберите действие:",
             reply_markup=main_menu()
         )
 
+    # ---- НАЗАД В СПИСОК КАТЕГОРИЙ ----
     elif data == "back_categories":
         await query.edit_message_text(
             "📂 Выберите категорию сервисов:",
             reply_markup=categories_menu()
         )
 
+    # ---- НАЗАД В СПИСОК СЕРВИСОВ КАТЕГОРИИ ----
     elif data == "back_to_games":
         await query.edit_message_text(
             "🎮 Вы выбрали категорию 'Игровые'.\n\nВыберите сервис:",
@@ -161,7 +163,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=other_menu()
         )
 
-    # ----- СЕРВИСЫ (ОТПРАВКА С КАРТИНКОЙ) -----
+    # ----- СЕРВИСЫ -----
     elif data == "belconsole":
         await query.message.reply_photo(
             photo="https://t.me/ERIPGameHub/7",
