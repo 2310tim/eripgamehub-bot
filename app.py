@@ -8,7 +8,7 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден")
 
-ADMIN_ID = os.getenv("ADMIN_CHAT_ID")
+ADMIN_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
 if not ADMIN_ID:
     raise ValueError("ADMIN_CHAT_ID не задан. Добавьте в переменные окружения.")
 
@@ -22,13 +22,18 @@ def home():
 def health():
     return "OK", 200
 
-# ----- ГЛАВНОЕ МЕНЮ -----
-def main_menu():
+# ----- ГЛАВНОЕ МЕНЮ (с динамической кнопкой для админа) -----
+def main_menu(user_id):
     keyboard = [
         [InlineKeyboardButton("📂 Категории сервисов", callback_data="categories")],
         [InlineKeyboardButton("📖 Инструкция", callback_data="tutorial")],
         [InlineKeyboardButton("📩 Связь", callback_data="contact")]
     ]
+
+    # Если пользователь — админ, добавляем скрытую кнопку
+    if user_id == ADMIN_ID:
+        keyboard.append([InlineKeyboardButton("⚙️ Админ-панель", callback_data="admin_panel")])
+
     return InlineKeyboardMarkup(keyboard)
 
 # ----- КЛАВИАТУРЫ КАТЕГОРИЙ -----
@@ -83,15 +88,17 @@ def back_to_other_menu():
 
 # ----- ОБРАБОТЧИКИ -----
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
     await update.message.reply_text(
         "👋 Здравствуйте!\n\nВыберите действие:",
-        reply_markup=main_menu()
+        reply_markup=main_menu(user_id)
     )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
+    user_id = update.effective_user.id
 
     # ---- ГЛАВНОЕ МЕНЮ ----
     if data == "categories":
@@ -120,11 +127,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data['awaiting_message'] = True
 
-    # ---- НАЗАД ----
+    # ---- АДМИН-ПАНЕЛЬ (только для админа) ----
+    elif data == "admin_panel":
+        if user_id != ADMIN_ID:
+            await query.edit_message_text("⛔ У вас нет доступа к этой кнопке.")
+            return
+
+        await query.edit_message_text(
+            "⚙️ Админ-панель\n\n"
+            "Здесь будут доступны функции для управления ботом:\n"
+            "• 📊 Статистика\n"
+            "• 📨 Рассылка\n"
+            "• 🛠 Управление сервисами\n\n"
+            "Пока что это заглушка. Функционал появится позже.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Назад", callback_data="back_main")]
+            ])
+        )
+
+    # ---- НАЗАД В ГЛАВНОЕ МЕНЮ ----
     elif data == "back_main":
         await query.edit_message_text(
             "👋 Здравствуйте!\n\nВыберите действие:",
-            reply_markup=main_menu()
+            reply_markup=main_menu(user_id)
         )
 
     elif data == "back_categories":
@@ -173,7 +198,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=other_menu()
         )
 
-    # ----- СЕРВИСЫ (ССЫЛКИ ОБНОВЛЕНЫ) -----
+    # ----- СЕРВИСЫ -----
     elif data == "belconsole":
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/7",
@@ -224,6 +249,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ----- ОБРАБОТЧИК ТЕКСТОВЫХ СООБЩЕНИЙ (для Связи) -----
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
     if context.user_data.get('awaiting_message'):
         user = update.effective_user
         text = update.message.text
@@ -246,7 +273,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(
             "Используйте кнопку 'Связь' в меню, чтобы отправить сообщение администратору.",
-            reply_markup=main_menu()
+            reply_markup=main_menu(user_id)
         )
 
 # ----- ЗАПУСК -----
