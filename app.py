@@ -30,7 +30,7 @@ def main_menu():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-# ----- КЛАВИАТУРЫ КАТЕГОРИЙ (в алфавитном порядке) -----
+# ----- КЛАВИАТУРЫ КАТЕГОРИЙ -----
 def categories_menu():
     keyboard = [
         [InlineKeyboardButton("Игровые", callback_data="games")],
@@ -64,6 +64,22 @@ def other_menu():
     ]
     return InlineKeyboardMarkup(keyboard)
 
+# ----- КЛАВИАТУРЫ ДЛЯ ВОЗВРАТА В СПИСОК СЕРВИСОВ -----
+def back_to_games_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_games")]
+    ])
+
+def back_to_telegram_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_telegram")]
+    ])
+
+def back_to_other_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_other")]
+    ])
+
 # ----- ОБРАБОТЧИКИ -----
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -93,20 +109,39 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("🔙 Назад", callback_data="back_main")]
             ])
         )
-        # Устанавливаем состояние, что пользователь в режиме отправки сообщения
         context.user_data['awaiting_message'] = True
 
-    # ---- НАЗАД ----
+    # ---- НАЗАД В ГЛАВНОЕ МЕНЮ ----
     elif data == "back_main":
         await query.edit_message_text(
             "👋 Здравствуйте!\n\nВыберите действие:",
             reply_markup=main_menu()
         )
 
+    # ---- НАЗАД В СПИСОК КАТЕГОРИЙ ----
     elif data == "back_categories":
         await query.edit_message_text(
             "📂 Выберите категорию сервисов:",
             reply_markup=categories_menu()
+        )
+
+    # ---- НАЗАД В СПИСОК СЕРВИСОВ КАТЕГОРИИ ----
+    elif data == "back_to_games":
+        await query.edit_message_text(
+            "🎮 Вы выбрали категорию 'Игровые'.\n\nВыберите сервис:",
+            reply_markup=games_menu()
+        )
+
+    elif data == "back_to_telegram":
+        await query.edit_message_text(
+            "📱 Вы выбрали категорию 'Telegram'.\n\nВыберите сервис:",
+            reply_markup=telegram_menu()
+        )
+
+    elif data == "back_to_other":
+        await query.edit_message_text(
+            "📦 Вы выбрали категорию 'Другие'.\n\nСписок сервисов скоро появится.",
+            reply_markup=other_menu()
         )
 
     # ---- КАТЕГОРИИ ----
@@ -128,13 +163,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=other_menu()
         )
 
-    # ---- СЕРВИСЫ ----
+    # ---- СЕРВИСЫ (возврат в список сервисов этой категории) ----
     elif data == "belconsole":
         await query.edit_message_text(
             "🎮 Belconsole.by\n\n"
             "Сайт: https://belconsole.by\n"
             "Описание: Площадка, где продаются цифровые коды активации, ключи для Steam и подписки для консолей.",
-            reply_markup=games_menu()
+            reply_markup=back_to_games_menu()
         )
 
     elif data == "donatov":
@@ -142,7 +177,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎮 Donatov.Net\n\n"
             "Сайт: https://donatov.net\n"
             "Описание: Платформа для донатов, пополнения игровых аккаунтов и покупки внутриигровой валюты.",
-            reply_markup=games_menu()
+            reply_markup=back_to_games_menu()
         )
 
     elif data == "gameonline":
@@ -150,7 +185,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎮 Game-Online.by\n\n"
             "Сайт: https://game-online.by\n"
             "Описание: Интернет-магазин лицензионных ключей для PC и консолей.",
-            reply_markup=games_menu()
+            reply_markup=back_to_games_menu()
         )
 
     elif data == "ggsel":
@@ -158,7 +193,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎮 GGSel\n\n"
             "Сайт: https://ggsel.net\n"
             "Описание: Торговая площадка, где независимые продавцы предлагают ключи к играм, игровую валюту, аккаунты, подписки и программное обеспечение для различных платформ.",
-            reply_markup=games_menu()
+            reply_markup=back_to_games_menu()
         )
 
     elif data == "zagruzka":
@@ -166,7 +201,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎮 Zagruzka.by\n\n"
             "Сайт: https://zagruzka.by\n"
             "Описание: Цифровой маркетплейс лицензионных игр.",
-            reply_markup=games_menu()
+            reply_markup=back_to_games_menu()
         )
 
     elif data == "lalyou":
@@ -174,17 +209,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🤖 LaLYoU Stars Bot\n\n"
             "Бот в Telegram: @LaLYoUStarsbot\n"
             "Описание: Бот для покупки звёзд, премиума, удалённых подарков, аренды NFT.",
-            reply_markup=telegram_menu()
+            reply_markup=back_to_telegram_menu()
         )
 
 # ----- ОБРАБОТЧИК ТЕКСТОВЫХ СООБЩЕНИЙ (для Связи) -----
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Проверяем, находится ли пользователь в режиме отправки сообщения
     if context.user_data.get('awaiting_message'):
         user = update.effective_user
         text = update.message.text
         
-        # Отправляем сообщение админу
         await context.bot.send_message(
             chat_id=ADMIN_ID,
             text=f"📩 Новое сообщение от пользователя:\n\n"
@@ -193,7 +226,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                  f"📝 Сообщение:\n{text}"
         )
         
-        # Подтверждаем пользователю
         await update.message.reply_text(
             "✅ Ваше сообщение отправлено администратору!\n\n"
             "Ожидайте ответа. Спасибо!",
@@ -202,10 +234,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
         )
         
-        # Сбрасываем состояние
         context.user_data['awaiting_message'] = False
     else:
-        # Если пользователь просто пишет боту, а не через кнопку "Связь"
         await update.message.reply_text(
             "Используйте кнопку 'Связь' в меню, чтобы отправить сообщение администратору.",
             reply_markup=main_menu()
@@ -215,13 +245,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def run_bot():
     application = Application.builder().token(TOKEN).build()
     
-    # Команды
     application.add_handler(CommandHandler("start", start))
-    
-    # Кнопки
     application.add_handler(CallbackQueryHandler(button_handler))
-    
-    # Текстовые сообщения (для Связи)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)
