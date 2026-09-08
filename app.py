@@ -1,4 +1,4 @@
-# app.py
+# app.py п
 from flask import Flask
 import os
 import sqlite3
