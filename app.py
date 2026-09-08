@@ -102,7 +102,15 @@ def back_to_other_menu():
         [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_other")]
     ])
 
-# ===== ИНСТРУКЦИЯ =====
+# ----- КНОПКА "ИНСТРУКЦИЯ" ДЛЯ GGSEL -----
+def ggsel_with_instruction():
+    keyboard = [
+        [InlineKeyboardButton("📖 Инструкция (Обязательно к прочтению)", callback_data="ggsel_instruction")],
+        [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_games")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+# ===== ИНСТРУКЦИЯ (ОБЩАЯ) =====
 def tutorial_keyboard(step):
     keyboard = []
     if step > 1:
@@ -161,6 +169,30 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data['awaiting_message'] = True
 
+    # ---- ИНСТРУКЦИЯ GGSEL ----
+    elif data == "ggsel_instruction":
+        await query.message.reply_photo(
+            photo="https://t.me/materialsERIPGameHub/10",
+            caption=(
+                "📖 **Инструкция по оплате через GGSel**\n\n"
+                "Нажмите на кнопку **\"Да\"**, которая указана на картинке, чтобы продолжить."
+            ),
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Вернуться", callback_data="ggsel_back")]
+            ])
+        )
+        await query.delete_message()
+
+    elif data == "ggsel_back":
+        # Возврат к карточке GGSel
+        await query.message.reply_photo(
+            photo="https://t.me/materialsERIPGameHub/8",
+            caption="🎮 GGSel\n\nСайт: https://ggsel.net\nОписание: Торговая площадка, где независимые продавцы предлагают ключи к играм, игровую валюту, аккаунты, подписки и программное обеспечение для различных платформ.",
+            reply_markup=ggsel_with_instruction()
+        )
+        await query.delete_message()
+
     # ---- ИНСТРУКЦИЯ: НАВИГАЦИЯ ----
     elif data.startswith("tutorial_forward_"):
         current_step = int(data.split("_")[2])
@@ -192,7 +224,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "**Шаг 1 из 2**\n\n"
                 "Подойдите к терминалу QIWI. Нажмите на кнопку **ЕРИП**, "
                 "на которую указана стрелка на картинке.\n\n"
-                "Инструкция будет дополненаа позже."
+                "Инструкция будет дополнена позже."
             )
             await query.edit_message_text(
                 text,
@@ -321,7 +353,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/8",
             caption="🎮 GGSel\n\nСайт: https://ggsel.net\nОписание: Торговая площадка, где независимые продавцы предлагают ключи к играм, игровую валюту, аккаунты, подписки и программное обеспечение для различных платформ.",
-            reply_markup=back_to_games_menu()
+            reply_markup=ggsel_with_instruction()
         )
         await query.delete_message()
 
