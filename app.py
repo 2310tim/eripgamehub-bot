@@ -192,7 +192,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "**Шаг 1 из 2**\n\n"
                 "Подойдите к терминалу QIWI. Нажмите на кнопку **ЕРИП**, "
                 "на которую указана стрелка на картинке.\n\n"
-                "Инструкция будет дополнена позже."
+                "Инструкция будет дополненаа позже."
             )
             await query.edit_message_text(
                 text,
