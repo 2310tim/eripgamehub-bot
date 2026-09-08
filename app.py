@@ -1,6 +1,8 @@
 # app.py
 from flask import Flask
 import os
+import sqlite3
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
@@ -14,29 +16,47 @@ if not ADMIN_ID:
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return "Bot is running"
+# ===== ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ =====
+conn = sqlite3.connect("stats.db", check_same_thread=False)
+cursor = conn.cursor()
 
-@app.route('/health')
-def health():
-    return "OK", 200
+# Создаём таблицу, если её нет
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS stats (
+        key TEXT PRIMARY KEY,
+        value INTEGER DEFAULT 0
+    )
+""")
+conn.commit()
 
-# ----- ГЛАВНОЕ МЕНЮ (с динамической кнопкой для админа) -----
+# ===== ФУНКЦИИ ДЛЯ РАБОТЫ СО СТАТИСТИКОЙ =====
+def increment_stat(key):
+    cursor.execute(
+        "INSERT INTO stats (key, value) VALUES (?, 1) ON CONFLICT(key) DO UPDATE SET value = value + 1",
+        (key,)
+    )
+    conn.commit()
+
+def get_stat(key):
+    cursor.execute("SELECT value FROM stats WHERE key = ?", (key,))
+    result = cursor.fetchone()
+    return result[0] if result else 0
+
+def get_all_stats():
+    cursor.execute("SELECT key, value FROM stats")
+    return dict(cursor.fetchall())
+
+# ===== КЛАВИАТУРЫ =====
 def main_menu(user_id):
     keyboard = [
         [InlineKeyboardButton("📂 Категории сервисов", callback_data="categories")],
         [InlineKeyboardButton("📖 Инструкция", callback_data="tutorial")],
         [InlineKeyboardButton("📩 Связь", callback_data="contact")]
     ]
-
-    # Если пользователь — админ, добавляем скрытую кнопку
     if user_id == ADMIN_ID:
         keyboard.append([InlineKeyboardButton("⚙️ Админ-панель", callback_data="admin_panel")])
-
     return InlineKeyboardMarkup(keyboard)
 
-# ----- КЛАВИАТУРЫ КАТЕГОРИЙ -----
 def categories_menu():
     keyboard = [
         [InlineKeyboardButton("Игровые", callback_data="games")],
@@ -70,7 +90,6 @@ def other_menu():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-# ----- КНОПКИ ДЛЯ ВОЗВРАТА -----
 def back_to_games_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_games")]
@@ -86,9 +105,11 @@ def back_to_other_menu():
         [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_other")]
     ])
 
-# ----- ОБРАБОТЧИКИ -----
+# ===== ОБРАБОТЧИКИ =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    increment_stat("total_users")
+    increment_stat("total_messages")
     await update.message.reply_text(
         "👋 Здравствуйте!\n\nВыберите действие:",
         reply_markup=main_menu(user_id)
@@ -99,6 +120,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
     user_id = update.effective_user.id
+
+    increment_stat("total_messages")
 
     # ---- ГЛАВНОЕ МЕНЮ ----
     if data == "categories":
@@ -119,6 +142,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "contact":
+        increment_stat("contact")
         await query.edit_message_text(
             "📩 Вы выбрали 'Связь'.\n\nПожалуйста, напишите ваше сообщение. Я перешлю его администратору.",
             reply_markup=InlineKeyboardMarkup([
@@ -127,25 +151,44 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data['awaiting_message'] = True
 
-    # ---- АДМИН-ПАНЕЛЬ (только для админа) ----
+    # ---- АДМИН-ПАНЕЛЬ ----
     elif data == "admin_panel":
         if user_id != ADMIN_ID:
-            await query.edit_message_text("⛔ У вас нет доступа к этой кнопке.")
+            await query.edit_message_text("⛔ У вас нет доступа.")
             return
 
+        all_stats = get_all_stats()
+        total_users = get_stat("total_users")
+        total_actions = get_stat("total_messages")
+        contact_count = get_stat("contact")
+
+        text = (
+            f"📊 **Статистика бота**\n\n"
+            f"👤 **Всего пользователей:** {total_users}\n"
+            f"📩 **Обращений через «Связь»:** {contact_count}\n"
+            f"🔄 **Всего действий:** {total_actions}\n\n"
+            f"📂 **Популярность категорий:**\n"
+            f"  🎮 Игровые: {get_stat('category_games')}\n"
+            f"  📱 Telegram: {get_stat('category_telegram')}\n"
+            f"  📦 Другие: {get_stat('category_other')}\n\n"
+            f"🔥 **Популярность сервисов:**\n"
+            f"  Belconsole.by: {get_stat('service_belconsole')}\n"
+            f"  Donatov.Net: {get_stat('service_donatov')}\n"
+            f"  Game-Online.by: {get_stat('service_gameonline')}\n"
+            f"  GGSel: {get_stat('service_ggsel')}\n"
+            f"  Zagruzka.by: {get_stat('service_zagruzka')}\n"
+            f"  LaLYoU Stars Bot: {get_stat('service_lalyou')}"
+        )
+
         await query.edit_message_text(
-            "⚙️ Админ-панель\n\n"
-            "Здесь будут доступны функции для управления ботом:\n"
-            "• 📊 Статистика\n"
-            "• 📨 Рассылка\n"
-            "• 🛠 Управление сервисами\n\n"
-            "Пока что это заглушка. Функционал появится позже.",
+            text,
+            parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔙 Назад", callback_data="back_main")]
             ])
         )
 
-    # ---- НАЗАД В ГЛАВНОЕ МЕНЮ ----
+    # ---- НАЗАД ----
     elif data == "back_main":
         await query.edit_message_text(
             "👋 Здравствуйте!\n\nВыберите действие:",
@@ -181,18 +224,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ---- КАТЕГОРИИ ----
     elif data == "games":
+        increment_stat("category_games")
         await query.edit_message_text(
             "🎮 Вы выбрали категорию 'Игровые'.\n\nВыберите сервис:",
             reply_markup=games_menu()
         )
 
     elif data == "telegram":
+        increment_stat("category_telegram")
         await query.edit_message_text(
             "📱 Вы выбрали категорию 'Telegram'.\n\nВыберите сервис:",
             reply_markup=telegram_menu()
         )
 
     elif data == "other":
+        increment_stat("category_other")
         await query.edit_message_text(
             "📦 Вы выбрали категорию 'Другие'.\n\nСписок сервисов скоро появится.",
             reply_markup=other_menu()
@@ -200,6 +246,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ----- СЕРВИСЫ -----
     elif data == "belconsole":
+        increment_stat("service_belconsole")
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/7",
             caption="🎮 Belconsole.by\n\nСайт: https://belconsole.by\nОписание: Площадка, где продаются цифровые коды активации, ключи для Steam и подписки для консолей.",
@@ -208,6 +255,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.delete_message()
 
     elif data == "donatov":
+        increment_stat("service_donatov")
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/5",
             caption="🎮 Donatov.Net\n\nСайт: https://donatov.net\nОписание: Платформа для донатов, пополнения игровых аккаунтов и покупки внутриигровой валюты.",
@@ -216,6 +264,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.delete_message()
 
     elif data == "gameonline":
+        increment_stat("service_gameonline")
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/4",
             caption="🎮 Game-Online.by\n\nСайт: https://game-online.by\nОписание: Интернет-магазин лицензионных ключей для PC и консолей.",
@@ -224,6 +273,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.delete_message()
 
     elif data == "ggsel":
+        increment_stat("service_ggsel")
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/8",
             caption="🎮 GGSel\n\nСайт: https://ggsel.net\nОписание: Торговая площадка, где независимые продавцы предлагают ключи к играм, игровую валюту, аккаунты, подписки и программное обеспечение для различных платформ.",
@@ -232,6 +282,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.delete_message()
 
     elif data == "zagruzka":
+        increment_stat("service_zagruzka")
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/6",
             caption="🎮 Zagruzka.by\n\nСайт: https://zagruzka.by\nОписание: Цифровой маркетплейс лицензионных игр.",
@@ -240,6 +291,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.delete_message()
 
     elif data == "lalyou":
+        increment_stat("service_lalyou")
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/2",
             caption="🤖 LaLYoU Stars Bot\n\nБот в Telegram: @LaLYoUStarsbot\nОписание: Бот для покупки звёзд, премиума, удалённых подарков, аренды NFT.",
@@ -247,9 +299,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.delete_message()
 
-# ----- ОБРАБОТЧИК ТЕКСТОВЫХ СООБЩЕНИЙ (для Связи) -----
+# ----- ОБРАБОТЧИК ТЕКСТОВЫХ СООБЩЕНИЙ -----
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    increment_stat("total_messages")
 
     if context.user_data.get('awaiting_message'):
         user = update.effective_user
