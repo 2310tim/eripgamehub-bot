@@ -102,22 +102,14 @@ def back_to_other_menu():
         [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_other")]
     ])
 
-# ===== ИНСТРУКЦИЯ (ВРЕМЕННАЯ) =====
+# ===== ИНСТРУКЦИЯ =====
 def tutorial_keyboard(step):
-    """Клавиатура для инструкции с навигацией"""
     keyboard = []
-    
-    # Кнопка "Назад" (если шаг > 1)
     if step > 1:
         keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data=f"tutorial_back_{step}")])
-    
-    # Кнопка "Вперед" (если шаг < 2, пока только 1 шаг)
     if step < 2:
         keyboard.append([InlineKeyboardButton("Вперед ▶️", callback_data=f"tutorial_forward_{step}")])
-    
-    # Кнопка "В главное меню" (всегда)
     keyboard.append([InlineKeyboardButton("🏠 В главное меню", callback_data="back_main")])
-    
     return InlineKeyboardMarkup(keyboard)
 
 # ===== ОБРАБОТЧИКИ =====
@@ -146,13 +138,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "tutorial":
-        # Показываем первый шаг инструкции
         text = (
             "📖 **Инструкция по оплате через терминал QIWI**\n\n"
             "**Шаг 1 из 2**\n\n"
             "Подойдите к терминалу QIWI. Нажмите на кнопку **ЕРИП**, "
             "на которую указана стрелка на картинке.\n\n"
-            "*(Полноценная инструкция с картинками будет позже)*"
+            "Инструкция будет дополнена позже."
         )
         await query.edit_message_text(
             text,
@@ -172,7 +163,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ---- ИНСТРУКЦИЯ: НАВИГАЦИЯ ----
     elif data.startswith("tutorial_forward_"):
-        # Переход на следующий шаг
         current_step = int(data.split("_")[2])
         next_step = current_step + 1
         
@@ -181,12 +171,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text = (
                     "📖 **Инструкция по оплате через терминал QIWI**\n\n"
                     "**Шаг 2 из 2**\n\n"
-                    "Полноценная инструкция будет позже, когда я смогу подойти к терминалу.\n\n"
-                    "Следите за обновлениями!"
+                    "Инструкция будет добавлена позже. Следите за обновлениями!"
                 )
             else:
-                # На случай, если шагов станет больше
-                text = f"📖 **Шаг {next_step}**\n\nПолноценная инструкция будет позже."
+                text = f"📖 **Шаг {next_step}**\n\nИнструкция будет добавлена позже."
             
             await query.edit_message_text(
                 text,
@@ -195,7 +183,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
     elif data.startswith("tutorial_back_"):
-        # Переход на предыдущий шаг
         current_step = int(data.split("_")[2])
         prev_step = current_step - 1
         
@@ -205,7 +192,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "**Шаг 1 из 2**\n\n"
                 "Подойдите к терминалу QIWI. Нажмите на кнопку **ЕРИП**, "
                 "на которую указана стрелка на картинке.\n\n"
-                "*(Полноценная инструкция с картинками будет позже)*"
+                "Инструкция будет дополнена позже."
             )
             await query.edit_message_text(
                 text,
@@ -219,16 +206,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("⛔ У вас нет доступа.")
             return
 
-        all_stats = get_all_stats()
-        total_users = get_stat("total_users")
-        total_actions = get_stat("total_messages")
-        contact_count = get_stat("contact")
-
         text = (
             f"📊 **Статистика бота**\n\n"
-            f"👤 **Всего пользователей:** {total_users}\n"
-            f"📩 **Обращений через «Связь»:** {contact_count}\n"
-            f"🔄 **Всего действий:** {total_actions}\n\n"
+            f"👤 **Всего пользователей:** {get_stat('total_users')}\n"
+            f"📩 **Обращений через «Связь»:** {get_stat('contact')}\n"
+            f"🔄 **Всего действий:** {get_stat('total_messages')}\n\n"
             f"📂 **Популярность категорий:**\n"
             f"  🎮 Игровые: {get_stat('category_games')}\n"
             f"  📱 Telegram: {get_stat('category_telegram')}\n"
