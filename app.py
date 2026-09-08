@@ -19,8 +19,6 @@ app = Flask(__name__)
 # ===== ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ =====
 conn = sqlite3.connect("stats.db", check_same_thread=False)
 cursor = conn.cursor()
-
-# Создаём таблицу, если её нет
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS stats (
         key TEXT PRIMARY KEY,
@@ -29,7 +27,6 @@ cursor.execute("""
 """)
 conn.commit()
 
-# ===== ФУНКЦИИ ДЛЯ РАБОТЫ СО СТАТИСТИКОЙ =====
 def increment_stat(key):
     cursor.execute(
         "INSERT INTO stats (key, value) VALUES (?, 1) ON CONFLICT(key) DO UPDATE SET value = value + 1",
@@ -105,6 +102,24 @@ def back_to_other_menu():
         [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_other")]
     ])
 
+# ===== ИНСТРУКЦИЯ (ВРЕМЕННАЯ) =====
+def tutorial_keyboard(step):
+    """Клавиатура для инструкции с навигацией"""
+    keyboard = []
+    
+    # Кнопка "Назад" (если шаг > 1)
+    if step > 1:
+        keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data=f"tutorial_back_{step}")])
+    
+    # Кнопка "Вперед" (если шаг < 2, пока только 1 шаг)
+    if step < 2:
+        keyboard.append([InlineKeyboardButton("Вперед ▶️", callback_data=f"tutorial_forward_{step}")])
+    
+    # Кнопка "В главное меню" (всегда)
+    keyboard.append([InlineKeyboardButton("🏠 В главное меню", callback_data="back_main")])
+    
+    return InlineKeyboardMarkup(keyboard)
+
 # ===== ОБРАБОТЧИКИ =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -131,14 +146,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "tutorial":
+        # Показываем первый шаг инструкции
+        text = (
+            "📖 **Инструкция по оплате через терминал QIWI**\n\n"
+            "**Шаг 1 из 2**\n\n"
+            "Подойдите к терминалу QIWI. Нажмите на кнопку **ЕРИП**, "
+            "на которую указана стрелка на картинке.\n\n"
+            "*(Полноценная инструкция с картинками будет позже)*"
+        )
         await query.edit_message_text(
-            "📖 Инструкция по оплате через терминал Киви\n\n"
-            "К сожалению, инструкция ещё в разработке.\n"
-            "Она появится в ближайшее время.\n\n"
-            "Следите за обновлениями!",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔙 Назад", callback_data="back_main")]
-            ])
+            text,
+            parse_mode="Markdown",
+            reply_markup=tutorial_keyboard(1)
         )
 
     elif data == "contact":
@@ -150,6 +169,49 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
         )
         context.user_data['awaiting_message'] = True
+
+    # ---- ИНСТРУКЦИЯ: НАВИГАЦИЯ ----
+    elif data.startswith("tutorial_forward_"):
+        # Переход на следующий шаг
+        current_step = int(data.split("_")[2])
+        next_step = current_step + 1
+        
+        if next_step <= 2:
+            if next_step == 2:
+                text = (
+                    "📖 **Инструкция по оплате через терминал QIWI**\n\n"
+                    "**Шаг 2 из 2**\n\n"
+                    "Полноценная инструкция будет позже, когда я смогу подойти к терминалу.\n\n"
+                    "Следите за обновлениями!"
+                )
+            else:
+                # На случай, если шагов станет больше
+                text = f"📖 **Шаг {next_step}**\n\nПолноценная инструкция будет позже."
+            
+            await query.edit_message_text(
+                text,
+                parse_mode="Markdown",
+                reply_markup=tutorial_keyboard(next_step)
+            )
+
+    elif data.startswith("tutorial_back_"):
+        # Переход на предыдущий шаг
+        current_step = int(data.split("_")[2])
+        prev_step = current_step - 1
+        
+        if prev_step == 1:
+            text = (
+                "📖 **Инструкция по оплате через терминал QIWI**\n\n"
+                "**Шаг 1 из 2**\n\n"
+                "Подойдите к терминалу QIWI. Нажмите на кнопку **ЕРИП**, "
+                "на которую указана стрелка на картинке.\n\n"
+                "*(Полноценная инструкция с картинками будет позже)*"
+            )
+            await query.edit_message_text(
+                text,
+                parse_mode="Markdown",
+                reply_markup=tutorial_keyboard(prev_step)
+            )
 
     # ---- АДМИН-ПАНЕЛЬ ----
     elif data == "admin_panel":
