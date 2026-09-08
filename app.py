@@ -14,6 +14,10 @@ ADMIN_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
 if not ADMIN_ID:
     raise ValueError("ADMIN_CHAT_ID не задан. Добавьте в переменные окружения.")
 
+CHANNEL_ID = os.getenv("CHANNEL_ID")  # Например: @ERIPGameHub или -1001234567890
+if not CHANNEL_ID:
+    raise ValueError("CHANNEL_ID не задан. Добавьте в переменные окружения.")
+
 app = Flask(__name__)
 
 # ===== ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ =====
@@ -38,10 +42,6 @@ def get_stat(key):
     cursor.execute("SELECT value FROM stats WHERE key = ?", (key,))
     result = cursor.fetchone()
     return result[0] if result else 0
-
-def get_all_stats():
-    cursor.execute("SELECT key, value FROM stats")
-    return dict(cursor.fetchall())
 
 # ===== КЛАВИАТУРЫ =====
 def main_menu(user_id):
@@ -102,7 +102,6 @@ def back_to_other_menu():
         [InlineKeyboardButton("🔙 Назад к списку сервисов", callback_data="back_to_other")]
     ])
 
-# ----- КНОПКА "ИНСТРУКЦИЯ" ДЛЯ GGSEL -----
 def ggsel_with_instruction():
     keyboard = [
         [InlineKeyboardButton("📖 Инструкция (Обязательно к прочтению)", callback_data="ggsel_instruction")],
@@ -120,9 +119,44 @@ def tutorial_keyboard(step):
     keyboard.append([InlineKeyboardButton("🏠 В главное меню", callback_data="back_main")])
     return InlineKeyboardMarkup(keyboard)
 
+# ===== ПРОВЕРКА ПОДПИСКИ =====
+async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Проверяет, подписан ли пользователь на канал. Возвращает True, если подписан."""
+    user_id = update.effective_user.id
+    try:
+        member = await context.bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
+        return member.status in ["member", "administrator", "creator"]
+    except Exception as e:
+        # Если бот не может проверить (например, канал приватный или бот не участник)
+        print(f"Ошибка проверки подписки: {e}")
+        # Для публичного канала можно вернуть False, если проверка не удалась
+        return False
+
 # ===== ОБРАБОТЧИКИ =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+
+    # Проверяем подписку
+    is_subscribed = await check_subscription(update, context)
+
+    if not is_subscribed:
+        text = (
+            "🔔 **Для использования бота подпишитесь на наш канал:**\n\n"
+            f"📢 [{CHANNEL_ID}](https://t.me/{CHANNEL_ID.replace('@', '')})\n\n"
+            "После подписки нажмите кнопку **«✅ Я подписался»**."
+        )
+        keyboard = [
+            [InlineKeyboardButton("📢 Подписаться", url=f"https://t.me/{CHANNEL_ID.replace('@', '')}")],
+            [InlineKeyboardButton("✅ Я подписался", callback_data="check_subscription")]
+        ]
+        await update.message.reply_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    # Если подписан — показываем главное меню
     increment_stat("total_users")
     increment_stat("total_messages")
     await update.message.reply_text(
@@ -136,9 +170,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     user_id = update.effective_user.id
 
+    # ---- ПРОВЕРКА ПОДПИСКИ ----
+    if data == "check_subscription":
+        is_subscribed = await check_subscription(update, context)
+
+        if is_subscribed:
+            # Обновляем сообщение
+            await query.edit_message_text("✅ Готово!")
+            # Показываем главное меню новым сообщением
+            increment_stat("total_users")
+            increment_stat("total_messages")
+            await query.message.reply_text(
+                "👋 Здравствуйте!\n\nВыберите действие:",
+                reply_markup=main_menu(user_id)
+            )
+        else:
+            # Если не подписался
+            await query.answer("❌ Вы ещё не подписались на канал!", show_alert=True)
+
+        return
+
+    # ---- ОСТАЛЬНЫЕ КНОПКИ (работают только после проверки подписки) ----
     increment_stat("total_messages")
 
-    # ---- ГЛАВНОЕ МЕНЮ ----
     if data == "categories":
         await query.edit_message_text(
             "📂 Выберите категорию сервисов:",
@@ -185,7 +239,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.delete_message()
 
     elif data == "ggsel_back":
-        # Возврат к карточке GGSel
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/8",
             caption="🎮 GGSel\n\nСайт: https://ggsel.net\nОписание: Торговая площадка, где независимые продавцы предлагают ключи к играм, игровую валюту, аккаунты, подписки и программное обеспечение для различных платформ.",
