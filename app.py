@@ -1,8 +1,7 @@
-# app.py п
+# app.py 
 from flask import Flask
 import os
 import sqlite3
-from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
@@ -12,15 +11,15 @@ if not TOKEN:
 
 ADMIN_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
 if not ADMIN_ID:
-    raise ValueError("ADMIN_CHAT_ID не задан. Добавьте в переменные окружения.")
+    raise ValueError("ADMIN_CHAT_ID не задан.")
 
-CHANNEL_ID = os.getenv("CHANNEL_ID")  # Например: @ERIPGameHub или -1001234567890
+CHANNEL_ID = os.getenv("CHANNEL_ID")  # Например: @ERIPGameHub
 if not CHANNEL_ID:
-    raise ValueError("CHANNEL_ID не задан. Добавьте в переменные окружения.")
+    raise ValueError("CHANNEL_ID не задан.")
 
 app = Flask(__name__)
 
-# ===== ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ =====
+# ===== БАЗА ДАННЫХ =====
 conn = sqlite3.connect("stats.db", check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute("""
@@ -109,7 +108,6 @@ def ggsel_with_instruction():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-# ===== ИНСТРУКЦИЯ (ОБЩАЯ) =====
 def tutorial_keyboard(step):
     keyboard = []
     if step > 1:
@@ -120,24 +118,20 @@ def tutorial_keyboard(step):
     return InlineKeyboardMarkup(keyboard)
 
 # ===== ПРОВЕРКА ПОДПИСКИ =====
-async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """Проверяет, подписан ли пользователь на канал. Возвращает True, если подписан."""
-    user_id = update.effective_user.id
+async def check_subscription(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> bool:
+    """Проверяет, подписан ли пользователь на канал."""
     try:
         member = await context.bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
         return member.status in ["member", "administrator", "creator"]
     except Exception as e:
-        # Если бот не может проверить (например, канал приватный или бот не участник)
         print(f"Ошибка проверки подписки: {e}")
-        # Для публичного канала можно вернуть False, если проверка не удалась
         return False
 
 # ===== ОБРАБОТЧИКИ =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    # Проверяем подписку
-    is_subscribed = await check_subscription(update, context)
+    is_subscribed = await check_subscription(context, user_id)
 
     if not is_subscribed:
         text = (
@@ -156,7 +150,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Если подписан — показываем главное меню
     increment_stat("total_users")
     increment_stat("total_messages")
     await update.message.reply_text(
@@ -170,14 +163,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     user_id = update.effective_user.id
 
-    # ---- ПРОВЕРКА ПОДПИСКИ ----
+    # ---- ПРОВЕРКА ПОДПИСКИ (КНОПКА) ----
     if data == "check_subscription":
-        is_subscribed = await check_subscription(update, context)
+        is_subscribed = await check_subscription(context, user_id)
 
         if is_subscribed:
-            # Обновляем сообщение
             await query.edit_message_text("✅ Готово!")
-            # Показываем главное меню новым сообщением
             increment_stat("total_users")
             increment_stat("total_messages")
             await query.message.reply_text(
@@ -185,12 +176,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=main_menu(user_id)
             )
         else:
-            # Если не подписался
             await query.answer("❌ Вы ещё не подписались на канал!", show_alert=True)
-
         return
 
-    # ---- ОСТАЛЬНЫЕ КНОПКИ (работают только после проверки подписки) ----
+    # ---- ВСЕ ОСТАЛЬНЫЕ КНОПКИ (РАБОТАЮТ ТОЛЬКО ПОСЛЕ ПОДПИСКИ) ----
+    is_subscribed = await check_subscription(context, user_id)
+    if not is_subscribed:
+        await query.answer("❌ Сначала подпишитесь на канал!", show_alert=True)
+        return
+
     increment_stat("total_messages")
 
     if data == "categories":
@@ -223,7 +217,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data['awaiting_message'] = True
 
-    # ---- ИНСТРУКЦИЯ GGSEL ----
     elif data == "ggsel_instruction":
         await query.message.reply_photo(
             photo="https://t.me/materialsERIPGameHub/10",
@@ -246,11 +239,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.delete_message()
 
-    # ---- ИНСТРУКЦИЯ: НАВИГАЦИЯ ----
     elif data.startswith("tutorial_forward_"):
         current_step = int(data.split("_")[2])
         next_step = current_step + 1
-        
         if next_step <= 2:
             if next_step == 2:
                 text = (
@@ -260,7 +251,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             else:
                 text = f"📖 **Шаг {next_step}**\n\nИнструкция будет добавлена позже."
-            
             await query.edit_message_text(
                 text,
                 parse_mode="Markdown",
@@ -270,7 +260,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("tutorial_back_"):
         current_step = int(data.split("_")[2])
         prev_step = current_step - 1
-        
         if prev_step == 1:
             text = (
                 "📖 **Инструкция по оплате через терминал QIWI**\n\n"
@@ -285,12 +274,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=tutorial_keyboard(prev_step)
             )
 
-    # ---- АДМИН-ПАНЕЛЬ ----
     elif data == "admin_panel":
         if user_id != ADMIN_ID:
             await query.edit_message_text("⛔ У вас нет доступа.")
             return
-
         text = (
             f"📊 **Статистика бота**\n\n"
             f"👤 **Всего пользователей:** {get_stat('total_users')}\n"
@@ -308,7 +295,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"  Zagruzka.by: {get_stat('service_zagruzka')}\n"
             f"  LaLYoU Stars Bot: {get_stat('service_lalyou')}"
         )
-
         await query.edit_message_text(
             text,
             parse_mode="Markdown",
@@ -317,7 +303,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
         )
 
-    # ---- НАЗАД ----
     elif data == "back_main":
         await query.edit_message_text(
             "👋 Здравствуйте!\n\nВыберите действие:",
@@ -351,7 +336,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=other_menu()
         )
 
-    # ---- КАТЕГОРИИ ----
     elif data == "games":
         increment_stat("category_games")
         await query.edit_message_text(
@@ -373,7 +357,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=other_menu()
         )
 
-    # ----- СЕРВИСЫ -----
     elif data == "belconsole":
         increment_stat("service_belconsole")
         await query.message.reply_photo(
@@ -431,8 +414,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ----- ОБРАБОТЧИК ТЕКСТОВЫХ СООБЩЕНИЙ -----
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    increment_stat("total_messages")
+    text = update.message.text.strip().lower()
 
+    # ---- ЕСЛИ ПОЛЬЗОВАТЕЛЬ НАПИСАЛ "Я ПОДПИСАЛСЯ" ----
+    if "я подписался" in text or "подписался" in text:
+        is_subscribed = await check_subscription(context, user_id)
+        if is_subscribed:
+            increment_stat("total_users")
+            increment_stat("total_messages")
+            await update.message.reply_text(
+                "✅ Готово!\n\n👋 Здравствуйте! Выберите действие:",
+                reply_markup=main_menu(user_id)
+            )
+        else:
+            await update.message.reply_text(
+                "❌ Вы ещё не подписались на канал! Подпишитесь и попробуйте снова.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📢 Подписаться", url=f"https://t.me/{CHANNEL_ID.replace('@', '')}")],
+                    [InlineKeyboardButton("✅ Я подписался", callback_data="check_subscription")]
+                ])
+            )
+        return
+
+    # ---- ЕСЛИ ПОЛЬЗОВАТЕЛЬ В РЕЖИМЕ "СВЯЗЬ" ----
     if context.user_data.get('awaiting_message'):
         user = update.effective_user
         text = update.message.text
@@ -452,11 +456,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
         )
         context.user_data['awaiting_message'] = False
-    else:
-        await update.message.reply_text(
-            "Используйте кнопку 'Связь' в меню, чтобы отправить сообщение администратору.",
-            reply_markup=main_menu(user_id)
-        )
+        return
+
+    # ---- ЕСЛИ ПРОСТО ТЕКСТ (НЕ "ПОДПИСАЛСЯ" И НЕ "СВЯЗЬ") ----
+    await update.message.reply_text(
+        "Используйте кнопки в меню. Если хотите написать администратору — нажмите 'Связь'.",
+        reply_markup=main_menu(user_id)
+    )
 
 # ----- ЗАПУСК -----
 def run_bot():
